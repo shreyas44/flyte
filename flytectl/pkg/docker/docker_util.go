@@ -9,17 +9,16 @@ import (
 	"os"
 	"strings"
 
-	"github.com/docker/docker/client"
-	"github.com/enescakir/emoji"
-
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/volume"
+	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/docker/go-connections/nat"
+	"github.com/enescakir/emoji"
 	"github.com/flyteorg/flyte/flytectl/clierrors"
 	"github.com/flyteorg/flyte/flytectl/cmd/config/subcommand/docker"
 	cmdUtil "github.com/flyteorg/flyte/flytectl/pkg/commandutils"
@@ -373,21 +372,24 @@ func PrintCreateVolume(name string) {
 
 func GetOrCreateVolume(
 	ctx context.Context, cli Docker, volumeName string, dryRun bool,
-) (*types.Volume, error) {
+) (*volume.Volume, error) {
 	if dryRun {
 		PrintCreateVolume(volumeName)
 		return nil, nil
 	}
 
-	resp, err := cli.VolumeList(ctx, filters.NewArgs(
-		filters.KeyValuePair{Key: "name", Value: fmt.Sprintf("^%s$", volumeName)},
-	))
+	lo := volume.ListOptions{
+		Filters: filters.NewArgs(
+			filters.KeyValuePair{Key: "name", Value: fmt.Sprintf("^%s$", volumeName)},
+		),
+	}
+	resp, err := cli.VolumeList(ctx, lo)
 	if err != nil {
 		return nil, err
 	}
 	switch len(resp.Volumes) {
 	case 0:
-		v, err := cli.VolumeCreate(ctx, volume.VolumeCreateBody{Name: volumeName})
+		v, err := cli.VolumeCreate(ctx, volume.CreateOptions{Name: volumeName})
 		if err != nil {
 			return nil, err
 		}

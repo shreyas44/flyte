@@ -9,6 +9,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/api/types/volume"
+	sandboxCmdConfig "github.com/flyteorg/flyte/flytectl/cmd/config/subcommand/sandbox"
 	"github.com/flyteorg/flyte/flytectl/pkg/docker"
 	"github.com/flyteorg/flyte/flytectl/pkg/docker/mocks"
 	f "github.com/flyteorg/flyte/flytectl/pkg/filesystemutils"
@@ -17,12 +22,6 @@ import (
 	"github.com/flyteorg/flyte/flytectl/pkg/k8s"
 	k8sMocks "github.com/flyteorg/flyte/flytectl/pkg/k8s/mocks"
 	"github.com/flyteorg/flyte/flytectl/pkg/util"
-
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/volume"
-	sandboxCmdConfig "github.com/flyteorg/flyte/flytectl/cmd/config/subcommand/sandbox"
 	"github.com/google/go-github/v42/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -95,12 +94,12 @@ func sandboxSetup() {
 	mockDocker = &mocks.Docker{}
 	errCh := make(chan error)
 	sandboxCmdConfig.DefaultConfig.Version = "v0.19.1"
-	bodyStatus := make(chan container.ContainerWaitOKBody)
+	bodyStatus := make(chan container.WaitResponse)
 	githubMock = &ghMocks.GHRepoService{}
 	sandboxCmdConfig.DefaultConfig.Image = "dummyimage"
-	mockDocker.OnVolumeList(ctx, filters.NewArgs(filters.KeyValuePair{Key: "name", Value: fmt.Sprintf("^%s$", docker.FlyteSandboxVolumeName)})).Return(volume.VolumeListOKBody{Volumes: []*types.Volume{}}, nil)
-	mockDocker.OnVolumeCreate(ctx, volume.VolumeCreateBody{Name: docker.FlyteSandboxVolumeName}).Return(types.Volume{Name: docker.FlyteSandboxVolumeName}, nil)
-	mockDocker.OnContainerCreateMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(container.ContainerCreateCreatedBody{
+	mockDocker.OnVolumeList(ctx, volume.ListOptions{Filters: filters.NewArgs(filters.KeyValuePair{Key: "name", Value: fmt.Sprintf("^%s$", docker.FlyteSandboxVolumeName)})}).Return(volume.ListResponse{Volumes: []*volume.Volume{}}, nil)
+	mockDocker.OnVolumeCreate(ctx, volume.CreateOptions{Name: docker.FlyteSandboxVolumeName}).Return(volume.Volume{Name: docker.FlyteSandboxVolumeName}, nil)
+	mockDocker.OnContainerCreateMatch(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(container.CreateResponse{
 		ID: "Hello",
 	}, nil)
 
@@ -139,8 +138,8 @@ func TestStartFunc(t *testing.T) {
 			Timestamps: true,
 			Follow:     true,
 		}).Return(nil, nil)
-		mockDocker.OnVolumeList(ctx, filters.NewArgs(filters.KeyValuePair{Key: mock.Anything, Value: mock.Anything})).Return(volume.VolumeListOKBody{Volumes: []*types.Volume{}}, nil)
-		mockDocker.OnVolumeCreate(ctx, volume.VolumeCreateBody{Name: mock.Anything}).Return(types.Volume{}, nil)
+		mockDocker.OnVolumeList(ctx, volume.ListOptions{Filters: filters.NewArgs(filters.KeyValuePair{Key: mock.Anything, Value: mock.Anything})}).Return(volume.ListResponse{Volumes: []*volume.Volume{}}, nil)
+		mockDocker.OnVolumeCreate(ctx, volume.CreateOptions{Name: mock.Anything}).Return(volume.Volume{}, nil)
 		_, err := startSandbox(ctx, mockDocker, githubMock, dummyReader(), config, sandboxImageName, defaultImagePrefix, exposedPorts, portBindings, util.SandBoxConsolePort)
 		assert.Nil(t, err)
 	})

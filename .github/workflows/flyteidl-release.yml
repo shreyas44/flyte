@@ -1,8 +1,9 @@
 name: Upload flyteidl to PyPI and npm
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - flyteidl/v*.*.*
 
 jobs:
   deploy-to-pypi:
